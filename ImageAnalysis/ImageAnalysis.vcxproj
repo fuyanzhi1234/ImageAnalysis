@@ -95,6 +95,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="imageanalysis.cpp" />
+    <ClCompile Include="ImageProcess.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -124,6 +125,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_imageanalysis.h" />
+    <ClInclude Include="ImageProcess.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="imageanalysis.qrc">

@@ -5,6 +5,8 @@
 #include "ui_imageanalysis.h"
 #include <opencv2\opencv.hpp>
 #include <opencv\cv.h>
+#include "ImageProcess.h"
+
 using namespace cv;
 
 class ImageAnalysis : public QMainWindow
@@ -14,7 +16,7 @@ class ImageAnalysis : public QMainWindow
 public:
 	ImageAnalysis(QWidget *parent = 0);
 	~ImageAnalysis();
-	void FourierTrans(Mat &image);
+	void SmoothImage(Mat src, int highThredhold);
 
 private slots:
 	void OnShowImage();
