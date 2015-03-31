@@ -1,6 +1,7 @@
 #include "imageanalysis.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDebug>
 
 Mat originImage;
 Mat grayImage;  
@@ -108,15 +109,31 @@ void ImageAnalysis::OnShowImage()
 
 
 
-// 	MatND histogram;  
-// 	//256个，范围是0，255.  
-// 	const int histSize = 256;  
-// 	float range[] = {0, 1};  
-// 	const float *ranges[] = {range};  
-// 	const int channels = 0;  
-// 
-// 	calcHist(&grayImage, 1, &channels, Mat(), histogram, 1, &histSize, &ranges[0], true, false);  
-// 	imshow("Canny", histogram);
+	MatND histogram;  
+	//256个，范围是0，255.  
+	const int histSize = 256;  
+	float range[] = {0, 255};  
+	const float *ranges[] = {range};  
+	const int channels = 0;  
+
+	calcHist(&grayImage, 1, &channels, Mat(), histogram, 1, &histSize, &ranges[0], true, false);
+
+	double minValue = 0;
+	double maxValue = 0;
+	int minValue_x = 0;
+	int maxValue_x = 0;
+	minMaxLoc(histogram, &minValue, &maxValue);
+	Mat hist;
+	hist.create(histSize, histSize, CV_8U);
+	for (int i = 0; i < 256; i ++)
+	{
+		int nPixCount = histogram.at<float>(i);
+		int nHistValue = histSize * nPixCount / maxValue;
+		cv::line(hist, cv::Point(i, histSize - nHistValue), cv::Point(i, histSize), Scalar::all(0));
+		qDebug()<<nHistValue;
+	}
+	imshow("Canny", hist);
+	return;
 
 
 	double high = 0;
