@@ -247,3 +247,33 @@ void ImageProcess::FourierTrans(Mat &image)
 	imshow("dstSharpen",dstSharpen[0]);
 	image = dstSharpen[0];
 }
+
+// 获得直方图信息
+void ImageProcess::CalculateHist(Mat &image, HistInfo &histInfo)
+{
+	MatND histogram;  
+	//256个，范围是0，255.  
+	const int histSize = 256;  
+	float range[] = {0, 255};  
+	const float *ranges[] = {range};  
+	const int channels = 0;  
+
+	// 计算直方图
+	calcHist(&image, 1, &channels, Mat(), histogram, 1, &histSize, &ranges[0], true, false);
+
+	double minValue = 0;
+	double maxValue = 0;
+	int minValue_x = 0;
+	int maxValue_x = 0;
+	minMaxLoc(histogram, &minValue, &maxValue);
+	histInfo.maxValue = maxValue;
+	histInfo.minValue = minValue;
+	histInfo.hist.create(histSize, histSize, CV_8U);
+	for (int i = 0; i < 256; i ++)
+	{
+		int nPixCount = histogram.at<float>(i);
+		histInfo.histArray[i] = nPixCount;
+		int nHistValue = histSize * nPixCount / maxValue;
+		cv::line(histInfo.hist, cv::Point(i, histSize - nHistValue), cv::Point(i, histSize), Scalar::all(0));
+	}
+}

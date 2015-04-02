@@ -12,6 +12,23 @@ public:
 	ImageProcess(void);
 	~ImageProcess(void);
 
+	struct HistInfo
+	{
+		int maxValue;
+		int minValue;
+		int maxValue_x;
+		int minValue_x;
+		int histArray[256];
+		Mat hist;
+		HistInfo()
+		{
+			maxValue = 0;
+			minValue = 0;
+			maxValue_x = -1;
+			minValue_x = -1;
+		}
+	};
+
 public:
 	static ImageProcess * Instance();
 	/* 计算Canny算法的两个阈值
@@ -33,6 +50,9 @@ public:
 
 	// 傅叶变换，向频域转换
 	void FourierTrans(Mat &image);
+
+	// 获得直方图信息
+	void CalculateHist(Mat &image, HistInfo &histInfo);
 
 private:
 };
