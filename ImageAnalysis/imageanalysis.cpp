@@ -107,11 +107,19 @@ void ImageAnalysis::OnShowImage()
 // 	ImageProcess::Instance()->FourierTrans(originImage);
 	imshow("Canny", originImage);
 
+	double sigma = 3;
+	int nThreshold = 0;
+	float amount = 5;
+	Mat imgBlurred;
+	GaussianBlur(grayImage, imgBlurred, Size(), sigma, sigma);
+	Mat lowContrastMask = abs(grayImage - imgBlurred) < nThreshold;
+	Mat imgDst = grayImage * (1+amount)+imgBlurred*(-amount); grayImage.copyTo(imgDst, lowContrastMask);
+	imshow("Oring", grayImage);
+	imshow("Canny", imgDst);
 
-
-	ImageProcess::HistInfo histInfo;
-	ImageProcess::Instance()->CalculateHist(grayImage, histInfo);
-	imshow("Canny", histInfo.hist);
+// 	ImageProcess::HistInfo histInfo;
+// 	ImageProcess::Instance()->CalculateHist(grayImage, histInfo);
+// 	imshow("Canny", histInfo.hist);
 
 	return;
 
