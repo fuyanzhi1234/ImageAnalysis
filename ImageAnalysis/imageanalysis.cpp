@@ -3,15 +3,10 @@
 #include <QMessageBox>
 #include <QDebug>
 
-Mat originImage;
-Mat grayImage;  
-Mat cannyImage;  
 
 #define CV_CVX_WHITE    CV_RGB(0xff,0xff,0xff)
 #define CV_CVX_BLACK    CV_RGB(0x00,0x00,0x00)
 
-double lowValue = 0;
-double averValue = 0;
 
                                                                          
 // 仿照matlab，自适应求高低两个门限                                            
@@ -71,15 +66,16 @@ void _AdaptiveFindThreshold(CvMat *dx, CvMat *dy, double *low, double *high)
 	cvReleaseHist(&hist);                                                  
 }                                                                              
 
-void onChangeThredhold(int hold, void *);
-
 ImageAnalysis::ImageAnalysis(QWidget *parent)
-	: QMainWindow(parent)
+	: QWidget(parent)
 {
 	ui.setupUi(this);
 
-	connect(ui.pushButton_showimage, SIGNAL(clicked()), SLOT(OnShowImage()));
-	connect(ui.pushButton_exit, SIGNAL(clicked()), SLOT(close()));
+	connect(ui.pushButton_main_showimage, SIGNAL(clicked()), SLOT(OnShowImage()));
+	connect(ui.pushButton_main_exit, SIGNAL(clicked()), SLOT(close()));
+	connect(ui.dial_main_thredhold, SIGNAL(valueChanged(int)), SLOT(OnValueChanged(int)));
+	connect(ui.checkBox_main_usmsharp, SIGNAL(stateChanged(int)), SLOT(OnUsmStateChanged(int)));
+	connect(ui.listWidget_main_regions, SIGNAL(itemClicked(QListWidgetItem *)), SLOT(OnRegionItemClicked(QListWidgetItem *)));
 }
 
 ImageAnalysis::~ImageAnalysis()
@@ -102,65 +98,62 @@ void ImageAnalysis::OnShowImage()
 		msgBox.exec();
 		return;
 	}
-	Mat sobelImage;  
-	cvtColor(originImage, grayImage, CV_BGR2GRAY);
-// 	ImageProcess::Instance()->FourierTrans(originImage);
-	imshow("Canny", originImage);
 
-	double sigma = 3;
-	int nThreshold = 0;
-	float amount = 5;
-	Mat imgBlurred;
-	GaussianBlur(grayImage, imgBlurred, Size(), sigma, sigma);
-	Mat lowContrastMask = abs(grayImage - imgBlurred) < nThreshold;
-	Mat imgDst = grayImage * (1+amount)+imgBlurred*(-amount); grayImage.copyTo(imgDst, lowContrastMask);
-	imshow("Oring", grayImage);
-	imshow("Canny", imgDst);
-
-// 	ImageProcess::HistInfo histInfo;
-// 	ImageProcess::Instance()->CalculateHist(grayImage, histInfo);
-// 	imshow("Canny", histInfo.hist);
-
+	// 图像预处理
+	PreAnalysisImage();
 	return;
 
+	//参数为：源图像，结果图像，图像深度，x方向阶数，y方向阶数，核的大小，尺度因子，增加的值
+// 	Sobel(originImage, sobelImage, CV_8U, 1, 0, 3, .3, 128);
+// 	imshow("sobel", sobelImage);
+// 	Mat normalizeImage;  
+// 	normalize(sobelImage, normalizeImage, 255, 0, CV_MINMAX);
+// 	Mat binaryImage;  
+// 	threshold(normalizeImage,binaryImage, 100, 255, THRESH_BINARY_INV );
+// 	imshow("threshold", binaryImage);
+// 	Mat morphologyImage;
+// 	Mat element = getStructuringElement(MORPH_RECT, Size(10, 10)); 
+// 	morphologyEx(binaryImage, morphologyImage, MORPH_CLOSE, element);
+// 	imshow("morphologyEx", morphologyImage);
+	return;
+}
 
+// 图像预处理
+void ImageAnalysis::PreAnalysisImage()
+{
+	Mat sobelImage;  
+	cvtColor(originImage, grayImage, CV_BGR2GRAY);
+	// 	ImageProcess::Instance()->FourierTrans(originImage);
+	// 	imshow("Canny", originImage);
+
+	// 自动找到阈值
 	double high = 0;
 	ImageProcess::Instance()->AdaptiveFindThreshold(grayImage, &lowValue, &high, &averValue);
 	SmoothImage(grayImage, averValue);
 
-	int count = lowValue;
-	createTrackbar("thredhold", "Canny", &count, 255, onChangeThredhold);
-	onChangeThredhold(count, NULL);
-	return;
+	// 进行USM锐化
+	if (ui.checkBox_main_usmsharp->isChecked())
+	{
+		ImageProcess::Instance()->USMSharp(grayImage);
+	}
 
-	//参数为：源图像，结果图像，图像深度，x方向阶数，y方向阶数，核的大小，尺度因子，增加的值
-	Sobel(originImage, sobelImage, CV_8U, 1, 0, 3, .3, 128);
-	imshow("sobel", sobelImage);
-	Mat normalizeImage;  
-	normalize(sobelImage, normalizeImage, 255, 0, CV_MINMAX);
-// 	imshow("normalize", normalizeImage);
-	Mat binaryImage;  
-	threshold(normalizeImage,binaryImage, 100, 255, THRESH_BINARY_INV );
-	imshow("threshold", binaryImage);
-	Mat morphologyImage;
-	Mat element = getStructuringElement(MORPH_RECT, Size(10, 10)); 
-	morphologyEx(binaryImage, morphologyImage, MORPH_CLOSE, element);
-	imshow("morphologyEx", morphologyImage);
-	return;
+	// 显示图像
+	ui.dial_main_thredhold->setValue(lowValue);
 }
 
-void onChangeThredhold(int hold, void *)
-{  
-	//canny边缘检测
-	GaussianBlur(grayImage, cannyImage, Size(5, 5), 0);
-	// 	hold = threshold(grayImage, cannyImage, 0, 255, THRESH_OTSU);
-	Canny(grayImage, cannyImage, hold, hold * 3);
-	Mat element = getStructuringElement(MORPH_RECT, Size(5, 5)); 
-	morphologyEx(cannyImage, cannyImage, CV_MOP_CLOSE, element);
-	ImageProcess::Instance()->ConnectedComponents(cannyImage, 0, 100, 1, Rect(), Point(-1, -1));    //采用多边形拟合处理
-	cvtColor(cannyImage, cannyImage, CV_GRAY2BGR);
-	cannyImage += originImage;
-	imshow("Canny", cannyImage);
+void ImageAnalysis::ShowImage(Mat image, QLabel *imageLabel)
+{
+	Mat resizeImage = image;
+	int w, h;
+	if (image.cols > 1024)
+	{
+		w = 1024;
+		h = 1024 * image.rows / image.cols;
+		cv::resize(image, resizeImage, cv::Size(w, h));
+	}
+	cvtColor(resizeImage, resizeImage, CV_BGR2RGB);
+	QImage qImage((const unsigned char *)resizeImage.data, resizeImage.cols, resizeImage.rows, QImage::Format_RGB888);
+	imageLabel->setPixmap(QPixmap::fromImage(qImage));
 }
 
 void ImageAnalysis::SmoothImage(Mat src, int highThredhold)
@@ -179,4 +172,57 @@ void ImageAnalysis::SmoothImage(Mat src, int highThredhold)
 		} // end of row                   
 		data+= step;  // next line  
 	}
+}
+
+// 旋钮移动响应
+void ImageAnalysis::OnValueChanged(int value)
+{
+	ui.spinBox_main_thredhold->setValue(value);
+	if (!grayImage.empty())
+	{
+		Mat cannyImage;
+		//canny边缘检测
+		GaussianBlur(grayImage, cannyImage, Size(5, 5), 0);
+		// 	hold = threshold(grayImage, cannyImage, 0, 255, THRESH_OTSU);
+		Canny(grayImage, cannyImage, value, value * 2.5);
+		Mat element = getStructuringElement(MORPH_RECT, Size(5, 5)); 
+		morphologyEx(cannyImage, cannyImage, CV_MOP_CLOSE, element);
+		std::vector<CvSeq *> vContours;
+		ImageProcess::Instance()->ConnectedComponents(cannyImage, vContours, 0, 100, 1, Rect(), Point(-1, -1));    //采用多边形拟合处理
+		int nIndex = 0;
+		ui.listWidget_main_regions->clear();
+		foreach(CvSeq *contour, vContours)
+		{
+			nIndex ++;
+			double area = cvContourArea( contour );
+			QString strItem = "%1, %2";
+			strItem = strItem.arg(nIndex).arg(area);
+			ui.listWidget_main_regions->addItem(strItem);
+		}
+		
+		cvtColor(cannyImage, cannyImage, CV_GRAY2BGR);
+		cannyImage += originImage;
+		ShowImage(cannyImage, ui.label_showimage);
+	}
+}
+
+// USM选择
+void ImageAnalysis::OnUsmStateChanged(int state)
+{
+	if (state == Qt::Checked)
+	{
+		ImageProcess::Instance()->USMSharp(grayImage);
+		ui.dial_main_thredhold->setValue(lowValue);
+		OnValueChanged(lowValue);
+	}
+	else
+	{
+		PreAnalysisImage();
+	}
+}
+
+// 当前颗粒列表点击事件
+void ImageAnalysis::OnRegionItemClicked(QListWidgetItem *item)
+{
+	item->setText("22");
 }

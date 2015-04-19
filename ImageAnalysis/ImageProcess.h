@@ -45,7 +45,7 @@ public:
 	@param area[in]: 面积阈值
 	@param number[int]: 
 	*/
-	void ConnectedComponents(Mat &mask_process, int componentType, int area, int number = 0,
+	void ConnectedComponents(Mat &mask_process, std::vector<CvSeq *> &vContours, int componentType, int area, int number = 0,
 		Rect &bounding_box = Rect(), Point &contour_centers = Point(-1, -1));
 
 	// 傅叶变换，向频域转换
@@ -53,6 +53,14 @@ public:
 
 	// 获得直方图信息
 	void CalculateHist(Mat &image, HistInfo &histInfo);
+	
+	/* USM锐化
+	@param image[in]: 源图像
+	@param sigma[in]: 高斯模糊半径（0.1-100pix）
+	@param nThreshold[in]: 锐化阈值（0-255）
+	@param amount[int]: 锐化数量（1-5）
+	*/
+	void USMSharp(Mat &image, double sigma = 4.5, int nThreshold = 10, float amount = 3);
 
 private:
 };

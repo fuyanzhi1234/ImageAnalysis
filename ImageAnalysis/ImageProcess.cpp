@@ -61,7 +61,7 @@ void ImageProcess::AdaptiveFindThreshold(const cv::Mat src, double *low, double 
 
 /* 拟合图像形成闭合区
 */
-void ImageProcess::ConnectedComponents(Mat &mask_process, int componentType, int area, int number,
+void ImageProcess::ConnectedComponents(Mat &mask_process, std::vector<CvSeq *> &vContours, int componentType, int area, int number,
 	Rect &bounding_box, Point &contour_centers)
 {
 	/*下面4句代码是为了兼容原函数接口，即内部使用的是c风格，但是其接口是c++风格的*/
@@ -151,6 +151,7 @@ void ImageProcess::ConnectedComponents(Mat &mask_process, int componentType, int
 			//Draw filled contours into mask
 			// 			cvDrawContours(mask,c,CV_CVX_WHITE,CV_CVX_WHITE,-1,CV_FILLED,8); //draw to central mask
 			cvDrawContours(mask,c,CV_CVX_WHITE,CV_CVX_WHITE,-1,1); //draw to central mask
+			vContours.push_back(c);
 		} //end looping over contours
 		*num = numFilled;
 		cvReleaseImage( &maskTemp);
@@ -276,4 +277,19 @@ void ImageProcess::CalculateHist(Mat &image, HistInfo &histInfo)
 		int nHistValue = histSize * nPixCount / maxValue;
 		cv::line(histInfo.hist, cv::Point(i, histSize - nHistValue), cv::Point(i, histSize), Scalar::all(0));
 	}
+}
+
+/* USM锐化
+@param image[in]: 源图像
+@param sigma[in]: 高斯模糊半径（0.1-100pix）
+@param nThreshold[in]: 锐化阈值（0-255）
+@param amount[int]: 锐化数量（1-5）
+*/
+void ImageProcess::USMSharp(Mat &image, double sigma, int nThreshold, float amount)
+{
+	Mat imgBlurred;
+	GaussianBlur(image, imgBlurred, Size(), sigma, sigma);
+	Mat lowContrastMask = abs(image - imgBlurred) < nThreshold;
+	image = image * (1+amount)+imgBlurred*(-amount); 
+	image.copyTo(image, lowContrastMask);
 }
